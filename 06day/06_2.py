@@ -1,58 +1,59 @@
 import math
-from itertools import zip_longest
 
 def parse_data(path_file): 
     matrix_data = []
     operators = []
     try:
         with open(path_file, "r") as f:
-            all_lines = [row.strip() for row in f.readlines() if row.strip()]
+            all_lines = [row.rstrip('\n') for row in f.readlines()]
             if not all_lines: return None, None
-            # last line are the operators
-            # split operators
-            operators = all_lines[-1].split()
-            # the rest of the lines are the matrix data
-            matrix_lines = all_lines[:-1]
-            for line in matrix_lines:
-                # keep str instead of casting them to int
-                matrix_data.append(line.split())
+            max_w = max(len(l) for l in all_lines)
+            padded = [l.ljust(max_w) for l in all_lines]
+            operator_line = padded[-1]
+            matrix_lines = padded[:-1]
+
+            cols = [list(c) for c in zip(*matrix_lines)]
+            current_problem_numbers = []
+            for i in range(len(cols) - 1, -1, -1):
+                col_chars = cols[i]
+                val_str = "".join(col_chars).strip()
+                if val_str:
+                    current_problem_numbers.append(int(val_str))
+                if not val_str or i == 0:
+                    if current_problem_numbers:
+                        op = '+'
+                        for j in range(i, i + len(current_problem_numbers) + 1):
+                            if j < len(operator_line) and operator_line[j] in '+*':
+                                op = operator_line[j]
+                                break
+                        matrix_data.append(current_problem_numbers)
+                        operators.append(op)
+                        current_problem_numbers = []
     except Exception as e:
         print(f"[error]: {e}")
         return None, None
     return matrix_data, operators
 
-def transform_matrix_cols(matrix_data):
-    return [list(col) for col in zip(*matrix_data)]
-
-def get_cols_from_col(col):
-    # revers each number
-    reversed_strings = [s[::-1] for s in col]
-    vertical_groups = zip_longest(*reversed_strings, fillvalue='')
-    result = [int("".join(group)) for group in vertical_groups if any(group)]
-    return result
-
 def operate_sign(cols, operators):
     results = {}
-    final_total_sum = 0
-    # i as col position to check the corresponding operator
     for i, col in enumerate(cols):
         sign = operators[i]
-        col_name = f"col_{i}_{sign}"
-        transformed_numbers = get_cols_from_col(col)
+        col_name = f"col: {i}_{sign}"
         if sign == '+':
-            col_result = sum(transformed_numbers)
+            results[col_name] = sum(col)
         elif sign == '*':
-            col_result = math.prod(transformed_numbers)
+            results[col_name] = math.prod(col)
         else:
-            col_result = 0
-        results[col_name] = col_result
-        final_total_sum += col_result
-    return results, final_total_sum
+            results[col_name] = 0
+    final_sum = 0
+    for value in results.values():
+        if isinstance(value, (int, float)):
+            final_sum += value
+    return results, final_sum
 
 PATH_FILE = "06.txt"
 
-matrix_data, operators = parse_data(PATH_FILE)
-columns = transform_matrix_cols(matrix_data)
-detailed_results, total = operate_sign(columns, operators)
+columns, operators = parse_data(PATH_FILE)
+result, _sum = operate_sign(columns, operators)
 
-print(f"total: {total}")
+print(_sum)
